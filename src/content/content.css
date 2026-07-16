@@ -1,0 +1,283 @@
+/* exF injected UI. Uses translucent surfaces + X-palette accents so it
+   works on X's light, dim, and lights-out themes without theme detection. */
+
+/* ---- tag chips ---- */
+
+.exf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+.exf-chip {
+  --exf-c: #8b98a5;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #fff;
+  background: var(--exf-c);
+  border: none;
+  white-space: nowrap;
+}
+
+.exf-chip-add {
+  background: transparent;
+  color: #8b98a5;
+  border: 1px dashed #8b98a5;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.exf-chip-add:hover {
+  opacity: 1;
+  color: #1d9bf0;
+  border-color: #1d9bf0;
+}
+
+/* ---- picker popover ---- */
+
+.exf-popover {
+  position: fixed;
+  z-index: 99999;
+  width: 260px;
+  border-radius: 14px;
+  background: rgba(21, 24, 28, 0.98);
+  color: #e7e9ea;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(139, 152, 165, 0.25);
+  padding: 10px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.exf-popover-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exf-popover-list {
+  max-height: 160px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+.exf-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.exf-popover-row:hover {
+  background: rgba(139, 152, 165, 0.15);
+}
+
+.exf-popover-row .exf-check {
+  margin-left: auto;
+  visibility: hidden;
+  color: #1d9bf0;
+  font-weight: 700;
+}
+
+.exf-popover-row.exf-on .exf-check {
+  visibility: visible;
+}
+
+.exf-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.exf-newtag {
+  border-top: 1px solid rgba(139, 152, 165, 0.25);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exf-input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 152, 165, 0.35);
+  background: rgba(139, 152, 165, 0.08);
+  color: inherit;
+  font: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.exf-input:focus {
+  border-color: #1d9bf0;
+}
+
+.exf-swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.exf-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.exf-swatch.exf-on {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #1d9bf0;
+}
+
+.exf-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  background: #1d9bf0;
+  color: #fff;
+  font-weight: 700;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.exf-btn:hover {
+  background: #1a8cd8;
+}
+
+/* ---- bookmarks folder bar ---- */
+
+.exf-folderbar {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(139, 152, 165, 0.2);
+}
+
+.exf-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.exf-crumb {
+  background: transparent;
+  border: none;
+  color: #1d9bf0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.exf-crumb:hover {
+  background: rgba(29, 155, 240, 0.12);
+}
+
+.exf-crumb-sep {
+  color: #8b98a5;
+  font-size: 13px;
+}
+
+.exf-foldergrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.exf-folder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(139, 152, 165, 0.25);
+  background: rgba(139, 152, 165, 0.06);
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.exf-folder span:last-child {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exf-folder:hover {
+  background: rgba(29, 155, 240, 0.1);
+  border-color: rgba(29, 155, 240, 0.4);
+}
+
+.exf-folder-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.exf-folder-new {
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.exf-folder-new:hover {
+  opacity: 1;
+}
+
+/* ---- per-tweet move button ---- */
+
+.exf-movebtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(139, 152, 165, 0.3);
+  background: rgba(21, 24, 28, 0.7);
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+article[data-testid="tweet"]:hover .exf-movebtn {
+  opacity: 1;
+}
+
+/* ---- folder filtering ---- */
+
+.exf-hidden {
+  display: none !important;
+}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="hdr">
+      <img src="../../icons/icon32.png" alt="" width="24" height="24" />
+      <h1>exF</h1>
+      <span class="sub">extend Folder</span>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab on" data-tab="tags">Tags</button>
+      <button class="tab" data-tab="folders">Folders</button>
+      <button class="tab" data-tab="backup">Backup</button>
+    </nav>
+
+    <section id="tab-tags" class="pane on">
+      <div id="tag-list" class="list"></div>
+      <div class="newrow">
+        <input id="tag-name" class="input" placeholder="New tag name…" maxlength="24" />
+        <div id="tag-swatches" class="swatches"></div>
+        <button id="tag-create" class="btn">Add tag</button>
+      </div>
+    </section>
+
+    <section id="tab-folders" class="pane">
+      <div id="folder-tree" class="list"></div>
+      <div class="newrow">
+        <input id="folder-name" class="input" placeholder="New root folder…" maxlength="40" />
+        <button id="folder-create" class="btn">Add folder</button>
+      </div>
+      <p class="hint">Tip: create subfolders and move bookmarks from the folder bar on x.com/i/bookmarks.</p>
+    </section>
+
+    <section id="tab-backup" class="pane">
+      <p class="hint">Your data lives only in this browser for now. Export a JSON backup, or restore one.</p>
+      <div class="newrow">
+        <button id="export" class="btn">Export JSON</button>
+        <button id="import" class="btn btn-ghost">Import JSON</button>
+        <input id="import-file" type="file" accept=".json" hidden />
+      </div>
+      <p id="backup-status" class="hint"></p>
+    </section>
+
+    <script src="../common/constants.js"></script>
+    <script src="../common/storage.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
