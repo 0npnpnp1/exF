@@ -1,15 +1,15 @@
-// User tagging: injects color tag chips into user cells (Following /
-// Followers / search lists) and profile headers.
+// Tag chips on user cells (following/followers/search lists), profile
+// headers and hover cards.
 //
-// X's DOM is an obfuscated React app, but data-testid attributes are far
-// more stable than class names — everything here anchors on those.
+// X's DOM is an obfuscated react app but data-testid attributes are
+// way more stable than class names, so everything anchors on those.
 window.exF = window.exF || {};
 
 (() => {
   const { storage, COLORS } = window.exF;
 
   const HANDLE_RE = /^\/([A-Za-z0-9_]{1,15})$/;
-  // Reserved top-level paths that look like handles but aren't.
+  // top-level paths that look like handles but aren't
   const NOT_HANDLES = new Set([
     "home", "explore", "notifications", "messages", "search", "settings",
     "compose", "i", "login", "logout", "signup", "about", "tos", "privacy",
@@ -23,14 +23,13 @@ window.exF = window.exF || {};
     return NOT_HANDLES.has(h.toLowerCase()) ? null : h;
   }
 
-  // ---- chip rendering ----
-
   async function renderChips(container, handle) {
     const tags = await storage.getTagsForUser(handle);
     container.textContent = "";
     for (const tag of tags) {
       const chip = document.createElement("span");
       chip.className = "exf-chip";
+      chip.dataset.color = tag.color;
       chip.style.setProperty("--exf-c", COLORS[tag.color] || COLORS.gray);
       chip.textContent = tag.name;
       container.appendChild(chip);
@@ -47,7 +46,7 @@ window.exF = window.exF || {};
     container.appendChild(add);
   }
 
-  // ---- tag picker popover ----
+  // tag picker popover
 
   let openPickerEl = null;
 
@@ -142,9 +141,10 @@ window.exF = window.exF || {};
       const name = input.value.trim();
       if (!name) return;
       const tag = await storage.createTag(name, picked);
+      if (!tag) return; // storage unreadable, nothing created
       await storage.toggleUserTag(handle, tag.id);
       onDone();
-      openPicker(anchor, handle, onDone); // re-render picker with new tag
+      openPicker(anchor, handle, onDone); // reopen with the new tag in it
     });
     form.appendChild(create);
     pop.appendChild(form);
@@ -158,52 +158,168 @@ window.exF = window.exF || {};
     input.focus();
   }
 
-  // ---- injection points ----
+  // injection
 
   function injectIntoUserCell(cell) {
-    if (cell.dataset.exfDone) return;
-    const link = [...cell.querySelectorAll('a[href^="/"]')].find((a) =>
-      handleFromHref(a.getAttribute("href"))
+    if (cell.dataset.exfDone || cell.querySelector(".exf-chips")) return;
+    // first @xxx span in document order is the header handle, not a
+    // bio mention
+    const atSpan = [...cell.querySelectorAll("span")].find((s) =>
+      /^@[A-Za-z0-9_]{1,15}$/.test(s.textContent)
     );
-    if (!link) return;
-    const handle = handleFromHref(link.getAttribute("href"));
+    if (!atSpan) return;
+    const handle = atSpan.textContent.slice(1);
     cell.dataset.exfDone = "1";
+    cell.dataset.exfHandle = handle;
 
-    const holder = document.createElement("div");
-    holder.className = "exf-chips";
-    // Place under the name/handle block: the cell's second column.
-    const nameBlock = link.closest('div[dir="ltr"]')?.parentElement || cell;
-    nameBlock.appendChild(holder);
+    // Append at the end of the handle's own line. Inserting between
+    // react-managed siblings breaks eventually, trailing append is the
+    // only pattern that survived.
+    const holder = document.createElement("span");
+    holder.className = "exf-chips exf-chips-inline";
+    const lineEl = atSpan.closest("div") || atSpan.parentElement;
+    lineEl.appendChild(holder);
     renderChips(holder, handle);
+  }
+
+  // X recycles DOM nodes across navigations: a cell injected for one
+  // user can get re-rendered showing another (handle mismatch), or a
+  // re-render drops our chips but keeps the cell and its data-exf-done
+  // marker. Both need repair or scan() skips the cell forever.
+  function reconcileRecycledCells() {
+    document
+      .querySelectorAll('[data-testid="UserCell"][data-exf-done]')
+      .forEach((cell) => {
+        const atSpan = [...cell.querySelectorAll("span")].find((s) =>
+          /^@[A-Za-z0-9_]{1,15}$/.test(s.textContent)
+        );
+        const current = atSpan?.textContent.slice(1).toLowerCase();
+        const injected = (cell.dataset.exfHandle || "").toLowerCase();
+        const recycled = current && injected && current !== injected;
+        const chipsLost = !cell.querySelector(".exf-chips");
+        if (recycled || chipsLost) {
+          cell.querySelector(".exf-chips")?.remove();
+          delete cell.dataset.exfDone;
+          delete cell.dataset.exfHandle;
+          injectIntoUserCell(cell);
+        }
+      });
   }
 
   function injectIntoProfile() {
     const header = document.querySelector('[data-testid="UserName"]');
-    if (!header || header.dataset.exfDone) return;
+    if (!header) return;
     const handle = handleFromHref(location.pathname);
     if (!handle) return;
-    header.dataset.exfDone = "1";
+    // same header element gets reused across profile navigations, only
+    // skip when it still shows the same handle
+    if (
+      header.dataset.exfHandle === handle &&
+      document.querySelector(".exf-chips-profile")
+    )
+      return;
+    document.querySelectorAll(".exf-chips-profile").forEach((el) => el.remove());
+    header.dataset.exfHandle = handle;
 
     const holder = document.createElement("div");
     holder.className = "exf-chips exf-chips-profile";
-    header.appendChild(holder);
+    // own line between the handle and the bio
+    header.insertAdjacentElement("afterend", holder);
+    renderChips(holder, handle);
+  }
+
+  // master switch, wired to the popup's "Show tags on X" toggle
+  let taggingEnabled = true;
+
+  function removeAllChips() {
+    closePicker();
+    document.querySelectorAll("[data-exf-done]").forEach((el) => {
+      delete el.dataset.exfDone;
+    });
+    document.querySelectorAll("[data-exf-handle]").forEach((el) => {
+      delete el.dataset.exfHandle;
+    });
+    document.querySelectorAll(".exf-chips").forEach((el) => el.remove());
+  }
+
+  // Profile hover cards (hovering a reply author etc). Recreated and
+  // recycled per hover, so track which handle we rendered for.
+  function injectIntoHoverCard() {
+    const card = document.querySelector('[data-testid="HoverCard"]');
+    if (!card) return;
+    // if the card embeds a UserCell the cell injector already covers it
+    if (card.querySelector('[data-testid="UserCell"]')) return;
+    const atSpan = [...card.querySelectorAll("span")].find((s) =>
+      /^@[A-Za-z0-9_]{1,15}$/.test(s.textContent)
+    );
+    if (!atSpan) return;
+    const handle = atSpan.textContent.slice(1);
+    if (
+      card.dataset.exfHandle === handle &&
+      card.querySelector(".exf-chips")
+    )
+      return;
+    card.querySelectorAll(".exf-chips").forEach((el) => el.remove());
+    card.dataset.exfHandle = handle;
+    const holder = document.createElement("span");
+    holder.className = "exf-chips exf-chips-inline";
+    const lineEl = atSpan.closest("div") || atSpan.parentElement;
+    lineEl.appendChild(holder);
     renderChips(holder, handle);
   }
 
   function scan() {
+    if (!taggingEnabled) return;
     document
       .querySelectorAll('[data-testid="UserCell"]:not([data-exf-done])')
-      .forEach(injectIntoUserCell);
-    injectIntoProfile();
+      .forEach((cell) => {
+        try {
+          injectIntoUserCell(cell);
+        } catch {
+          // never let one bad cell break the page
+        }
+      });
+    try {
+      reconcileRecycledCells();
+    } catch {
+      // ignore
+    }
+    try {
+      injectIntoHoverCard();
+    } catch {
+      // ignore
+    }
+    try {
+      injectIntoProfile();
+    } catch {
+      // ignore
+    }
   }
 
-  // Re-render everything when data changes elsewhere (e.g. popup).
+  storage.getSettings().then((s) => {
+    taggingEnabled = s.taggingEnabled !== false;
+    // the initial route() may have injected before this resolved
+    if (!taggingEnabled) removeAllChips();
+  });
+
+  // re-render when data changes elsewhere (popup etc)
   storage.onChange((changes) => {
-    if (changes.tags || changes.userTags) {
-      document.querySelectorAll("[data-exf-done]").forEach((el) => {
-        delete el.dataset.exfDone;
-      });
-      document.querySelectorAll(".exf-chips").forEach((el) => el.remove());
+    let rebuild = !!(changes.tags || changes.userTags);
+    if (changes.settings) {
+      const wasEnabled = taggingEnabled;
+      taggingEnabled =
+        changes.settings.newValue?.taggingEnabled !== false;
+      if (!taggingEnabled) {
+        removeAllChips();
+        return;
+      }
+      // settings is shared with the bookmarks feature. Only a
+      // taggingEnabled flip should tear chips down, folder bar toggles
+      // must not flicker every chip on the page.
+      if (!wasEnabled) rebuild = true;
+    }
+    if (rebuild) {
+      removeAllChips();
       scan();
     }
   });

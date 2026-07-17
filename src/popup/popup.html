@@ -12,27 +12,32 @@
     </header>
 
     <nav class="tabs">
-      <button class="tab on" data-tab="tags">Tags</button>
-      <button class="tab" data-tab="folders">Folders</button>
+      <button class="tab on" data-tab="folders">Folders</button>
+      <button class="tab" data-tab="tags">Tags</button>
       <button class="tab" data-tab="backup">Backup</button>
     </nav>
 
-    <section id="tab-tags" class="pane on">
-      <div id="tag-list" class="list"></div>
-      <div class="newrow">
-        <input id="tag-name" class="input" placeholder="New tag name…" maxlength="24" />
-        <div id="tag-swatches" class="swatches"></div>
-        <button id="tag-create" class="btn">Add tag</button>
-      </div>
-    </section>
-
-    <section id="tab-folders" class="pane">
+    <section id="tab-folders" class="pane on">
+      <div id="folder-rootzone" class="rootzone">Drop here to move to top level</div>
       <div id="folder-tree" class="list"></div>
       <div class="newrow">
         <input id="folder-name" class="input" placeholder="New root folder…" maxlength="40" />
         <button id="folder-create" class="btn">Add folder</button>
       </div>
       <p class="hint">Tip: create subfolders and move bookmarks from the folder bar on x.com/i/bookmarks.</p>
+    </section>
+
+    <section id="tab-tags" class="pane">
+      <label class="switchrow">
+        <input type="checkbox" id="tagging-enabled" checked />
+        <span>Show tags on X</span>
+      </label>
+      <div id="tag-list" class="list"></div>
+      <div class="newrow">
+        <input id="tag-name" class="input" placeholder="New tag name…" maxlength="24" />
+        <div id="tag-swatches" class="swatches"></div>
+        <button id="tag-create" class="btn">Add tag</button>
+      </div>
     </section>
 
     <section id="tab-backup" class="pane">

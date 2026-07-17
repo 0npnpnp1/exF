@@ -12,13 +12,42 @@ Chrome extension that extends X/Twitter with:
 
 Brand color: `#7291BF` (from [logo.jpg](logo.jpg)).
 
-## Install (dev)
+## Install
+
+Until the Chrome Web Store listing is live:
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right)
 3. **Load unpacked** → select this folder
 4. Visit x.com — tag chips appear on user cells/profiles, the folder bar
    appears on the Bookmarks page.
+
+## Privacy
+
+Everything stays in your browser: exF makes no network requests, only
+reads what X has already rendered for you, and stores tags/folders in
+`chrome.storage.local`. Use the popup's **Backup** tab to export/import
+your data as JSON.
+
+## Using X on multiple devices
+
+exF never writes to X — filing a bookmark into a folder only records a
+note inside your browser. Your actual X bookmarks stay untouched, so
+the mobile app (and every other device) sees exactly what it always
+did. In practice:
+
+- **Bookmark on your phone** -> it shows up on web in *All bookmarks*,
+  unsorted, ready to be filed.
+- **Remove a bookmark on your phone** (or the author deletes the post)
+  -> nothing breaks; exF just keeps a harmless stale entry, so folder
+  counts can drift slightly over time.
+- **Tags and folders are visible only where exF is installed** — the
+  mobile app can't run extensions. Cross-device sync via an optional
+  exF account is on the roadmap.
+- **Two computers** -> two separate folder trees for now; carry data
+  over with the popup's JSON export/import until sync lands.
+- **Multiple X accounts in one browser** share one exF dataset for now
+  — per-account separation is planned.
 
 ## Architecture decisions (v1.0)
 
@@ -28,38 +57,6 @@ Brand color: `#7291BF` (from [logo.jpg](logo.jpg)).
 | Storage | `chrome.storage.local` only; JSON export/import as backup |
 | Accounts | None yet — Supabase (Sign in with X) planned for cross-device sync/sharing later |
 | Targets | `x.com` + `twitter.com`, Chrome only, Manifest V3 |
-| Promo | Sliding/fading folder-page effect is **promo video only**, not in-app UI |
-
-## Layout
-
-```
-manifest.json
-icons/                     # generated from logo.jpg
-src/
-  common/
-    constants.js           # window.exF namespace, 9-color palette
-    storage.js             # chrome.storage schema + CRUD
-  content/
-    main.js                # SPA router (MutationObserver + URL watch)
-    tagger.js              # tag chips on user cells & profiles
-    bookmarks.js           # nested folder bar + filtering on /i/bookmarks
-    content.css
-  popup/                   # manage tags/folders, JSON backup
-  background/
-    service-worker.js      # seeds defaults; future Supabase auth home
-```
-
-## Storage schema (v1.0)
-
-```js
-{
-  schemaVersion: 1,
-  tags:            { [tagId]: { id, name, color, createdAt } },
-  userTags:        { [handleLower]: [tagId, ...] },
-  folders:         { [folderId]: { id, name, parentId|null, createdAt } },
-  bookmarkFolders: { [tweetId]: folderId },   // mapping only — bookmarks never leave X
-}
-```
 
 ## Known v1.0 limitations / next steps
 
@@ -67,9 +64,20 @@ src/
   replace with proper injected UI.
 - Selectors depend on X's `data-testid` attributes; if X renames them,
   `tagger.js` / `bookmarks.js` need patching.
-- Folder filtering only applies to bookmarks currently rendered in the
-  virtualized timeline (scroll to load more).
+- Folder views render from metadata captured when a bookmark is filed;
+  bookmarks filed before this feature show as bare post links until
+  re-filed.
 - Supabase auth + sync not wired yet (account: Sign in with X planned).
+- No cleanup of stale bookmark mappings yet (a "clean stale entries"
+  maintenance action is a good v1.1 candidate).
+- exF data isn't namespaced per X account — switching accounts in the
+  same browser mixes tag/folder views (v1.1 candidate).
+
+## Contributing
+
+Dev setup, live reload, code layout, and ground rules live in
+[CONTRIBUTING.md](CONTRIBUTING.md). Selector fixes are always welcome —
+X redesigns often.
 
 ## License
 

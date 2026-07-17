@@ -5,6 +5,14 @@ NOTES.md
 Untitled.paint
 /*.png
 present vid.txt
+New Text Document.txt
+
+# private working area
+prod/
+prototype/
+
+# local Claude Code config (name is fixed by the tool — don't rename)
+.claude/
 
 # OS noise
 Thumbs.db

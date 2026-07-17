@@ -1,5 +1,5 @@
-/* exF injected UI. Uses translucent surfaces + X-palette accents so it
-   works on X's light, dim, and lights-out themes without theme detection. */
+/* Injected UI. Translucent surfaces and X palette accents, works on
+   light, dim and lights-out themes without any theme detection. */
 
 /* ---- tag chips ---- */
 
@@ -11,26 +11,71 @@
   align-items: center;
 }
 
+/* in user cells: inline right after the @handle */
+.exf-chips-inline {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  margin: 0 0 0 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.exf-chips-profile {
+  /* roughly equal gap above and below the chips */
+  margin-top: -8px;
+  margin-bottom: 2px;
+}
+
 .exf-chip {
   --exf-c: #8b98a5;
   display: inline-flex;
   align-items: center;
-  padding: 1px 8px;
+  justify-content: center;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 400;
   font-family: inherit;
-  color: #fff;
-  background: var(--exf-c);
+  /* translucent wash of the tag color as background, full color for
+     the text, readable on both light and dark */
+  color: var(--exf-c);
+  background: color-mix(in srgb, var(--exf-c) 30%, transparent);
   border: none;
   white-space: nowrap;
+  /* inherited RTL contexts can scramble glyph order */
+  direction: ltr;
+  unicode-bidi: isolate;
+  transition: background 0.15s;
+  /* arrow cursor instead of I-beam, text stays selectable */
+  cursor: default;
+}
+
+.exf-chip:hover {
+  background: color-mix(in srgb, var(--exf-c) 50%, transparent);
+}
+
+/* The pale colors wash out on white, shift them to deeper tones on the
+   light theme. Dark and dim keep the originals. */
+.exf-light .exf-chip[data-color="lavender"] {
+  --exf-c: #7291bf;
+}
+
+.exf-light .exf-chip[data-color="mint"] {
+  --exf-c: #5f9db4;
+}
+
+.exf-light .exf-chip[data-color="yellow"] {
+  --exf-c: #8a9ac2;
 }
 
 .exf-chip-add {
   background: transparent;
   color: #8b98a5;
   border: 1px dashed #8b98a5;
+  /* 1px less padding to offset the border, bottom-heavy so the text
+     sits optically centered */
+  padding: 0 7px 2px;
   cursor: pointer;
   opacity: 0.55;
   transition: opacity 0.15s;
@@ -130,7 +175,8 @@
 }
 
 .exf-input:focus {
-  border-color: #1d9bf0;
+  border-color: #7291bf; /* exF brand periwinkle */
+  box-shadow: 0 0 0 2px rgba(114, 145, 191, 0.35);
 }
 
 .exf-swatches {
@@ -176,6 +222,12 @@
   border-bottom: 1px solid rgba(139, 152, 165, 0.2);
 }
 
+/* inside a folder the bar is the last visible block, its border would
+   double up with X's section border below it */
+.exf-folderbar:has(.exf-contents) {
+  border-bottom: none;
+}
+
 .exf-crumbs {
   display: flex;
   align-items: center;
@@ -203,6 +255,20 @@
 .exf-crumb-sep {
   color: #8b98a5;
   font-size: 13px;
+}
+
+.exf-xfolders-row {
+  padding: 6px 16px 2px;
+}
+
+.exf-xfolders-toggle {
+  color: #8b98a5;
+  font-weight: 400;
+  padding-left: 0;
+}
+
+.exf-xfolders-toggle:hover {
+  color: #1d9bf0;
 }
 
 .exf-foldergrid {
@@ -241,8 +307,20 @@
 }
 
 .exf-folder-icon {
-  font-size: 20px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exf-folder-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.exf-folder-plus {
+  font-size: 20px;
+  color: #8b98a5;
 }
 
 .exf-folder-new {
@@ -259,25 +337,171 @@
 .exf-movebtn {
   position: absolute;
   top: 8px;
-  right: 8px;
-  z-index: 10;
+  /* clear of the post's own top-right controls (grok + ... menu) */
+  right: 76px;
+  z-index: 1000;
   width: 28px;
   height: 28px;
   border-radius: 50%;
   border: 1px solid rgba(139, 152, 165, 0.3);
   background: rgba(21, 24, 28, 0.7);
-  font-size: 13px;
   cursor: pointer;
-  opacity: 0;
+  /* faint at rest so it's still discoverable, full on hover */
+  opacity: 0.45;
   transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.exf-movebtn:hover {
+  opacity: 1;
+}
+
+.exf-movebtn svg {
+  width: 15px;
+  height: 15px;
 }
 
 article[data-testid="tweet"]:hover .exf-movebtn {
   opacity: 1;
 }
 
+/* ---- folder contents (our cards, replace the timeline in a folder) ---- */
+
+.exf-contents {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.exf-card {
+  padding: 10px 4px;
+  border-top: 1px solid rgba(139, 152, 165, 0.2);
+}
+
+.exf-card[draggable="true"] {
+  cursor: grab;
+}
+
+.exf-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.exf-folder.exf-dragover,
+.exf-crumb.exf-dragover {
+  border-color: #1d9bf0;
+  background: rgba(29, 155, 240, 0.15);
+  color: #1d9bf0;
+}
+
+.exf-card-link {
+  font-weight: 700;
+  font-size: 14px;
+  color: #1d9bf0;
+  text-decoration: none;
+}
+
+.exf-card-link:hover {
+  text-decoration: underline;
+}
+
+.exf-card-text {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+.exf-card-actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+}
+
+.exf-card-btn {
+  background: transparent;
+  border: 1px solid rgba(139, 152, 165, 0.35);
+  border-radius: 999px;
+  color: #8b98a5;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.exf-card-btn:hover {
+  color: #1d9bf0;
+  border-color: #1d9bf0;
+}
+
+.exf-card-empty {
+  padding: 12px 4px;
+  color: #8b98a5;
+  font-size: 13px;
+}
+
+/* ---- header toggle button ---- */
+
+.exf-headerbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+}
+
+/* X-style hover tooltip, same look and delay as "Create a Folder" */
+.exf-headerbtn::after {
+  content: attr(data-exf-tip);
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(91, 96, 102, 0.98);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 100000;
+}
+
+.exf-headerbtn:hover::after {
+  opacity: 1;
+  transition: opacity 0.1s ease 0.4s;
+}
+
+.exf-headerbtn:hover {
+  background: rgba(139, 152, 165, 0.15);
+}
+
+.exf-headerbtn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Blue tint while the exF folder bar is shown */
+.exf-headerbtn.exf-on svg path {
+  fill: #1d9bf0;
+}
+
 /* ---- folder filtering ---- */
 
 .exf-hidden {
+  display: none !important;
+}
+
+.exf-collapsed {
   display: none !important;
 }
