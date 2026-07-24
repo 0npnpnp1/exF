@@ -14,6 +14,12 @@ window.exF = window.exF || {};
   // It used to await getSettings and the timeline hid a beat after
   // renderBar painted, or overlapping calls landed out of order.
   let barCollapsed = false;
+  // Same reason: applyNativeFolderVisibility runs on every DOM pass, so
+  // it must not await a storage read each time.
+  let hideNativeFolders = false;
+  // "Hide X Folders" needs its own class: applyFilter drives exf-hidden
+  // on the same containers and would clear it on every pass.
+  const X_HIDDEN = "exf-xhidden";
 
   const isBookmarksPage = () => /^\/i\/bookmarks/.test(location.pathname);
 
@@ -324,7 +330,7 @@ window.exF = window.exF || {};
   // "Hide X Folders" control below the bookmarks search bar. Block-level
   // sibling insertion, the stable kind (insertions inside virtualized
   // cells are not).
-  async function mountXFoldersToggle() {
+  function mountXFoldersToggle() {
     if (!isBookmarksPage() || nativeIdFromPath() || currentFolderId) {
       document.querySelector(".exf-xfolders-row")?.remove();
       return;
@@ -349,8 +355,8 @@ window.exF = window.exF || {};
       if (existing.previousElementSibling === block) return; // placed
       existing.remove();
     }
-    const { hideNativeFolders } = await storage.getSettings();
-    if (document.querySelector(".exf-xfolders-row")) return; // raced
+    // label reads the module cache (warmed at init, kept fresh by
+    // onChange) so this stays sync and can't shadow it
     const row = document.createElement("div");
     row.className = "exf-xfolders-row";
     const btn = document.createElement("button");
@@ -359,11 +365,9 @@ window.exF = window.exF || {};
       ? "Show X Folders"
       : "Hide X Folders";
     btn.addEventListener("click", async () => {
-      const s = await storage.getSettings();
-      await storage.updateSettings({
-        hideNativeFolders: !s.hideNativeFolders,
-      });
-      applyNativeFolderVisibility();
+      hideNativeFolders = !hideNativeFolders;
+      applyNativeFolderVisibility(); // paint now, persist after
+      await storage.updateSettings({ hideNativeFolders });
       row.remove();
       mountXFoldersToggle();
     });
@@ -371,14 +375,58 @@ window.exF = window.exF || {};
     block.insertAdjacentElement("afterend", row);
   }
 
-  // hide/show X's native folder rows on the main bookmarks page
-  async function applyNativeFolderVisibility() {
+  // Hide/show X's native folder rows on the main bookmarks page.
+  //
+  // Runs on every DOM pass, so it must be sync (no storage await) and
+  // idempotent (write only when a cell's state actually changes).
+  //
+  // Prefers hiding a whole container when every cell in it is a folder
+  // row: per-cell hiding inside X's virtualized list collapses cell
+  // heights, which makes X remeasure and yank the scroll position.
+  //
+  // Every cell is re-evaluated, not just the ones holding folder links.
+  // X recycles cells while scrolling, so a cell we hid can come back
+  // holding a post — without the else-branch below it would stay
+  // hidden and posts would vanish as you scroll.
+  function applyNativeFolderVisibility() {
     if (!isBookmarksPage() || nativeIdFromPath()) return;
-    const { hideNativeFolders } = await storage.getSettings();
-    document.querySelectorAll('a[href^="/i/bookmarks/"]').forEach((a) => {
-      const cell = a.closest('[data-testid="cellInnerDiv"]');
-      if (cell) cell.classList.toggle("exf-hidden", !!hideNativeFolders);
-    });
+
+    const stats = new Map(); // container -> { total, folders }
+    const cells = document.querySelectorAll('[data-testid="cellInnerDiv"]');
+    for (const cell of cells) {
+      const container = cell.parentElement;
+      if (!container) continue;
+      const s = stats.get(container) || { total: 0, folders: 0 };
+      s.total++;
+      if (cell.querySelector('a[href^="/i/bookmarks/"]')) s.folders++;
+      stats.set(container, s);
+    }
+
+    for (const [container, s] of stats) {
+      // A container of nothing but folder rows can be hidden as one
+      // block, which the virtualizer handles without reflow churn.
+      const wholeBlock = s.folders === s.total && s.total > 0;
+      setHidden(container, wholeBlock && hideNativeFolders, X_HIDDEN);
+      if (wholeBlock) {
+        // Clear any per-cell hiding left from a previous layout.
+        for (const cell of container.children) setHidden(cell, false, X_HIDDEN);
+      }
+    }
+
+    for (const cell of cells) {
+      const container = cell.parentElement;
+      const s = container && stats.get(container);
+      if (!s || (s.folders === s.total && s.total > 0)) continue;
+      const isFolderRow = !!cell.querySelector('a[href^="/i/bookmarks/"]');
+      setHidden(cell, hideNativeFolders && isFolderRow, X_HIDDEN);
+    }
+  }
+
+  // Toggle without touching the DOM when nothing changes.
+  function setHidden(el, hidden, cls = "exf-hidden") {
+    if (!el || !el.classList) return;
+    if (el.classList.contains(cls) === hidden) return;
+    el.classList.toggle(cls, hidden);
   }
 
   // Inside a folder we hide X's timeline as whole blocks and render our
@@ -740,6 +788,9 @@ window.exF = window.exF || {};
     document
       .querySelectorAll(".exf-hidden")
       .forEach((el) => el.classList.remove("exf-hidden"));
+    document
+      .querySelectorAll(".exf-xhidden")
+      .forEach((el) => el.classList.remove("exf-xhidden"));
     mounted = false;
     currentFolderId = null;
   }
@@ -751,12 +802,16 @@ window.exF = window.exF || {};
     if (isBookmarksPage()) mount();
   }
 
-  // warm the collapse cache before the first mount pass
+  // warm the setting caches before the first mount pass
   storage.getSettings().then((s) => {
     barCollapsed = !!s.folderBarCollapsed;
+    hideNativeFolders = !!s.hideNativeFolders;
   });
 
   storage.onChange((changes) => {
+    if (changes.settings) {
+      hideNativeFolders = !!changes.settings.newValue?.hideNativeFolders;
+    }
     if (!mounted) return;
     if (changes.settings) {
       applyBarCollapsed();

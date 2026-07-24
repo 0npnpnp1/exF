@@ -502,6 +502,12 @@ article[data-testid="tweet"]:hover .exf-movebtn {
   display: none !important;
 }
 
+/* "Hide X Folders" — separate from .exf-hidden so the folder-view
+   filter and this toggle can't clear each other. */
+.exf-xhidden {
+  display: none !important;
+}
+
 .exf-collapsed {
   display: none !important;
 }

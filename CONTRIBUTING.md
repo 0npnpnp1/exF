@@ -62,6 +62,12 @@ Content scripts can't use ES modules, so shared code hangs off the
 }
 ```
 
+## Changelog
+
+User-visible changes go under `[Unreleased]` in
+[CHANGELOG.md](CHANGELOG.md) — added / changed / fixed. Internal
+refactors that users can't notice don't need an entry.
+
 ## Ground rules
 
 - **Selectors**: anchor on X's `data-testid` attributes, never on

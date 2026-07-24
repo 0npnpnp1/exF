@@ -1,5 +1,6 @@
 # private launch notes
 NOTES.md
+CHANGELOG.md
 
 # local scraps / originals not needed in the repo
 Untitled.paint
@@ -10,6 +11,13 @@ New Text Document.txt
 # private working area
 prod/
 prototype/
+exf-promo/
+
+# packaging output — NEVER commit the .pem, it's the extension's
+# signing key (anyone holding it can forge updates)
+*.pem
+*.crx
+*.zip
 
 # local Claude Code config (name is fixed by the tool — don't rename)
 .claude/
