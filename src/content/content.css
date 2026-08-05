@@ -337,16 +337,15 @@
 .exf-movebtn {
   position: absolute;
   top: 8px;
-  /* clear of the post's own top-right controls (grok + ... menu) */
-  right: 76px;
+  right: 71px;
   z-index: 1000;
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid rgba(139, 152, 165, 0.3);
-  background: rgba(21, 24, 28, 0.7);
+  border: 1px solid rgba(139, 152, 165, 0.35);
+  background: rgba(21, 24, 28, 0.55);
+  color: #8b98a5;
   cursor: pointer;
-  /* faint at rest so it's still discoverable, full on hover */
   opacity: 0.45;
   transition: opacity 0.15s;
   display: flex;
@@ -355,17 +354,29 @@
   padding: 0;
 }
 
+.exf-light .exf-movebtn {
+  color: #536471;
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(83, 100, 113, 0.35);
+}
+
 .exf-movebtn:hover {
   opacity: 1;
 }
 
-.exf-movebtn svg {
-  width: 15px;
-  height: 15px;
+.exf-movebtn.exf-movebtn-low {
+  top: 40px;
+  right: 14px;
 }
 
-article[data-testid="tweet"]:hover .exf-movebtn {
-  opacity: 1;
+.exf-movebtn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.exf-movebtn svg path {
+  fill: currentColor;
 }
 
 /* ---- folder contents (our cards, replace the timeline in a folder) ---- */
@@ -502,8 +513,14 @@ article[data-testid="tweet"]:hover .exf-movebtn {
   display: none !important;
 }
 
-/* "Hide X Folders" — separate from .exf-hidden so the folder-view
-   filter and this toggle can't clear each other. */
+/* "Hide X Folders" — driven by a single class on <html>, not by
+   toggling cells from JS (that fights X's virtualizer while scrolling).
+   :has() keeps folder rows hidden even as cells are recycled. */
+html.exf-hide-xfolders [data-testid="cellInnerDiv"]:has(a[href^="/i/bookmarks/"]):not(:has(article[data-testid="tweet"])) {
+  display: none !important;
+}
+
+/* Legacy mark from older builds — cleared in JS, kept harmless. */
 .exf-xhidden {
   display: none !important;
 }

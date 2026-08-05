@@ -17,9 +17,6 @@ window.exF = window.exF || {};
   // Same reason: applyNativeFolderVisibility runs on every DOM pass, so
   // it must not await a storage read each time.
   let hideNativeFolders = false;
-  // "Hide X Folders" needs its own class: applyFilter drives exf-hidden
-  // on the same containers and would clear it on every pass.
-  const X_HIDDEN = "exf-xhidden";
 
   const isBookmarksPage = () => /^\/i\/bookmarks/.test(location.pathname);
 
@@ -375,58 +372,28 @@ window.exF = window.exF || {};
     block.insertAdjacentElement("afterend", row);
   }
 
-  // Hide/show X's native folder rows on the main bookmarks page.
+  // Hide X's native folder rows on the main bookmarks page.
   //
-  // Runs on every DOM pass, so it must be sync (no storage await) and
-  // idempotent (write only when a cell's state actually changes).
+  // Do NOT toggle display:none on individual cells or on their
+  // containers from JS. X virtualizes the bookmarks list: when the
+  // visible mix of folder/tweet cells changes while scrolling, any
+  // "hide whole container iff every cell is a folder" heuristic flips
+  // on and off, the list remeasures, and scroll jumps to the top.
   //
-  // Prefers hiding a whole container when every cell in it is a folder
-  // row: per-cell hiding inside X's virtualized list collapses cell
-  // heights, which makes X remeasure and yank the scroll position.
-  //
-  // Every cell is re-evaluated, not just the ones holding folder links.
-  // X recycles cells while scrolling, so a cell we hid can come back
-  // holding a post — without the else-branch below it would stay
-  // hidden and posts would vanish as you scroll.
+  // Instead flip one class on <html> and let CSS :has() hide folder
+  // rows. That stays stable across recycle/scroll, and never fights
+  // applyFilter's exf-hidden on the same nodes.
   function applyNativeFolderVisibility() {
-    if (!isBookmarksPage() || nativeIdFromPath()) return;
-
-    const stats = new Map(); // container -> { total, folders }
-    const cells = document.querySelectorAll('[data-testid="cellInnerDiv"]');
-    for (const cell of cells) {
-      const container = cell.parentElement;
-      if (!container) continue;
-      const s = stats.get(container) || { total: 0, folders: 0 };
-      s.total++;
-      if (cell.querySelector('a[href^="/i/bookmarks/"]')) s.folders++;
-      stats.set(container, s);
+    const on =
+      isBookmarksPage() && !nativeIdFromPath() && hideNativeFolders;
+    document.documentElement.classList.toggle("exf-hide-xfolders", on);
+    // Strip legacy per-node marks from older builds so a recycled
+    // cell can't stay blank after becoming a tweet.
+    if (document.querySelector(".exf-xhidden")) {
+      document
+        .querySelectorAll(".exf-xhidden")
+        .forEach((el) => el.classList.remove("exf-xhidden"));
     }
-
-    for (const [container, s] of stats) {
-      // A container of nothing but folder rows can be hidden as one
-      // block, which the virtualizer handles without reflow churn.
-      const wholeBlock = s.folders === s.total && s.total > 0;
-      setHidden(container, wholeBlock && hideNativeFolders, X_HIDDEN);
-      if (wholeBlock) {
-        // Clear any per-cell hiding left from a previous layout.
-        for (const cell of container.children) setHidden(cell, false, X_HIDDEN);
-      }
-    }
-
-    for (const cell of cells) {
-      const container = cell.parentElement;
-      const s = container && stats.get(container);
-      if (!s || (s.folders === s.total && s.total > 0)) continue;
-      const isFolderRow = !!cell.querySelector('a[href^="/i/bookmarks/"]');
-      setHidden(cell, hideNativeFolders && isFolderRow, X_HIDDEN);
-    }
-  }
-
-  // Toggle without touching the DOM when nothing changes.
-  function setHidden(el, hidden, cls = "exf-hidden") {
-    if (!el || !el.classList) return;
-    if (el.classList.contains(cls) === hidden) return;
-    el.classList.toggle(cls, hidden);
   }
 
   // Inside a folder we hide X's timeline as whole blocks and render our
@@ -468,6 +435,18 @@ window.exF = window.exF || {};
 
   // per-tweet "move to folder" button
 
+  function layoutMoveButton(article, btn) {
+    btn.classList.remove("exf-movebtn-low");
+    const name = article.querySelector('[data-testid="User-Name"]');
+    if (!name) return;
+    const br = btn.getBoundingClientRect();
+    const nr = name.getBoundingClientRect();
+    if (br.width === 0 || nr.width === 0) return;
+    const sameRow = nr.bottom > br.top && nr.top < br.bottom;
+    const collides = sameRow && nr.right > br.left - 6;
+    if (collides) btn.classList.add("exf-movebtn-low");
+  }
+
   async function injectTweetButtons() {
     if (!isBookmarksPage()) return;
     const articles = document.querySelectorAll(
@@ -488,7 +467,14 @@ window.exF = window.exF || {};
       });
       article.style.position = "relative";
       article.appendChild(btn);
+      requestAnimationFrame(() => layoutMoveButton(article, btn));
     }
+    document
+      .querySelectorAll('article[data-testid="tweet"] .exf-movebtn')
+      .forEach((btn) => {
+        const article = btn.closest("article");
+        if (article) layoutMoveButton(article, btn);
+      });
   }
 
   // On X's native folder pages we show a back-link into our tree
@@ -785,6 +771,7 @@ window.exF = window.exF || {};
     document.querySelector(".exf-folderbar")?.remove();
     document.querySelector(".exf-headerbtn")?.remove();
     document.querySelector(".exf-xfolders-row")?.remove();
+    document.documentElement.classList.remove("exf-hide-xfolders");
     document
       .querySelectorAll(".exf-hidden")
       .forEach((el) => el.classList.remove("exf-hidden"));

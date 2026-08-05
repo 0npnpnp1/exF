@@ -18,6 +18,7 @@ exf-promo/
 *.pem
 *.crx
 *.zip
+build/
 
 # local Claude Code config (name is fixed by the tool — don't rename)
 .claude/
