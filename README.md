@@ -1,4 +1,4 @@
-# exF — extend Folder (v1.0)
+# exF — extend Folder (v1.0.2)
 
 Chrome extension that extends X/Twitter with:
 
