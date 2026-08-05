@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "exF — extend Folder",
-  "version": "1.0",
+  "version": "1.0.2",
   "description": "Extend X/Twitter: color tags on people you follow, and nested folders for your bookmarks.",
   "icons": {
     "16": "icons/icon16.png",
